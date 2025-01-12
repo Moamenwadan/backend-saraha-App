@@ -6,7 +6,7 @@ import asyncHandler from "../../utils/errorHandling/asyncHandler.js";
 import { hash, compareHashing } from "../../utils/hashing/hash.js";
 import sendEmail from "../../utils/emails/sendEmail.js";
 import { signup } from "../../utils/emails/generateHTML.js";
-// import jwt from "jsonwebtoken";
+import event from "../../utils/emails/email.event.js";
 export const register = asyncHandler(async (req, res, next) => {
   const { userName, email, age, password, confirmPasswrod, phone, gender } =
     req.body;
@@ -25,13 +25,14 @@ export const register = asyncHandler(async (req, res, next) => {
   //   password,
   //   Number(process.env.SALT_ROUND)
   // );
-  const token = jwt.sign({ email }, process.env.SIGNATURE);
-  const link = `http://localhost:3000/auth/activate_acount/${token}`;
-  const isSent = await sendEmail({
-    to: email,
-    subject: "HI paploo",
-    html: signup(link),
-  });
+  // const token = jwt.sign({ email }, process.env.SIGNATURE);
+  // const link = `http://localhost:3000/auth/activate_acount/${token}`;
+  // const isSent = await sendEmail({
+  //   to: email,
+  //   subject: "HI paploo",
+  //   html: signup(link),
+  // });
+  event.emit("send", email);
   const hashPassword = hash({ plainText: password });
   const encryptionPhone = Crypto.AES.encrypt(phone, process.env.ENCRYPTION);
   user.password = hashPassword;
@@ -82,7 +83,6 @@ export const activateAccount = async (req, res, next) => {
   const { token } = req.params;
   const { email } = jwt.verify(token, process.env.SIGNATURE);
   const user = await User.findOne({ email });
-  console.log(user);
   if (!user) return next(new Error("document not found"), { cause: 400 });
   user.isActivated = true;
   await user.save();
