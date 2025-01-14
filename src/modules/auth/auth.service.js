@@ -7,6 +7,8 @@ import { hash, compareHashing } from "../../utils/hashing/hash.js";
 import sendEmail from "../../utils/emails/sendEmail.js";
 import { signup } from "../../utils/emails/generateHTML.js";
 import event from "../../utils/emails/email.event.js";
+import { dcryption, encryption } from "../../utils/encryption/encryption.js";
+import { generateToken } from "../../utils/token/token.js";
 export const register = asyncHandler(async (req, res, next) => {
   const { userName, email, age, password, confirmPasswrod, phone, gender } =
     req.body;
@@ -21,24 +23,13 @@ export const register = asyncHandler(async (req, res, next) => {
     phone,
     gender,
   });
-  // const hashPassword = bcrypt.hashSync(
-  //   password,
-  //   Number(process.env.SALT_ROUND)
-  // );
-  // const token = jwt.sign({ email }, process.env.SIGNATURE);
-  // const link = `http://localhost:3000/auth/activate_acount/${token}`;
-  // const isSent = await sendEmail({
-  //   to: email,
-  //   subject: "HI paploo",
-  //   html: signup(link),
-  // });
+
   event.emit("send", email);
   const hashPassword = hash({ plainText: password });
-  const encryptionPhone = Crypto.AES.encrypt(phone, process.env.ENCRYPTION);
+  const encryptionPhone = encryption({ plainText: phone });
   user.password = hashPassword;
   user.phone = encryptionPhone;
   await user.save();
-  // await user.save();
   return res.status(201).json({
     status: "success",
     message: "the user created successfully",
@@ -53,7 +44,6 @@ export const login = async (req, res, next) => {
   if (!user) return next(new Error("the user doesn't exist", { cause: 404 }));
   if (!user.isActivated)
     return next(new Error("you must activate account", { cause: 403 }));
-  // if (!bcrypt.compareSync(password, user.password))
   if (
     !compareHashing({
       plainText: password,
@@ -61,16 +51,10 @@ export const login = async (req, res, next) => {
     })
   )
     return next(new Error("invalid password", { cause: 401 }));
-  const dcryptionPhone = Crypto.AES.decrypt(
-    user.phone,
-    process.env.ENCRYPTION
-  ).toString(Crypto.enc.Utf8);
+
+  const dcryptionPhone = dcryption({ plainText: user.phone });
   user.phone = dcryptionPhone;
-  const token = jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.SIGNATURE,
-    { expiresIn: "3h" }
-  );
+  const token = generateToken({ plainText: { id: user._id, email: email } });
 
   return res.status(201).json({
     status: "success",
